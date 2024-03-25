@@ -146,12 +146,12 @@ if st.button("Submit"):
     # Extract the selected stocks, ETFs, funds, and bonds from the LLM response
     portfolio_items = extract_portfolio_items(llm_response)
 
-    # Display the portfolio chart
-    if portfolio_items:
-        fig = display_portfolio_chart(portfolio_items)
-        st.plotly_chart(fig)
-    else:
-        st.warning("No portfolio items found in the recommendation.")
+    # # Display the portfolio chart
+    # if portfolio_items:
+    #     fig = display_portfolio_chart(portfolio_items)
+    #     st.plotly_chart(fig)
+    # else:
+    #     st.warning("No portfolio items found in the recommendation.")
 
 with tab2:
     # Get market sentiment from the LLM
@@ -216,8 +216,8 @@ def display_portfolio_chart(portfolio_items):
     labels = list(portfolio_items.keys())
     values = [len(items) for items in portfolio_items.values()]
 
-    # Create a pie chart
-    fig = px.pie(values=values, names=labels, title="Portfolio Allocation")
+    # # Create a pie chart
+    # fig = px.pie(values=values, names=labels, title="Portfolio Allocation")
 
-    # Display the chart in Streamlit
-    st.plotly_chart(fig)
+    # # Display the chart in Streamlit
+    # st.plotly_chart(fig)
