@@ -155,7 +155,7 @@ with tab1:
     # Input for the user's message
     user_input = st.text_input("Type your message here...", value=st.session_state.default_user_input, key="user_input")
 
-    if st.button("Submit", disabled=st.session_state.is_loading):
+    if st.button("Submit", disabled=st.session_state.is_loading, key="submit_button"):
         st.session_state.is_loading = True
         
         # Append user message to chat history
@@ -188,7 +188,7 @@ with tab1:
     # Display loading message while processing
     if st.session_state.is_loading:
         st.markdown('<div class="loading-message">Processing your request...</div>', unsafe_allow_html=True)
-        st.button("Submit", disabled=True)
+        st.button("Submit", disabled=True, key="disabled_submit_button")
 
     # Display messages from the chat history
     for message in st.session_state.messages:
