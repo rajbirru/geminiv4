@@ -1,0 +1,16 @@
+streamlit
+requests 
+pandas 
+matplotlib 
+plotly
+streamlit
+langchain
+langchain-google-genai
+selenium
+beautifulsoup4
+vertexai
+google-cloud-aiplatform
+elevenlabs
+genai
+IPython
+matplotlib
