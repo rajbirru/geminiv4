@@ -155,45 +155,42 @@ with tab1:
     # Input for the user's message
     user_input = st.text_input("Type your message here...", value=st.session_state.default_user_input, key="user_input")
 
-    if st.button("Submit", disabled=st.session_state.is_loading, key="submit_button"):
-        st.session_state.is_loading = True
-        
-        # Append user message to chat history
-        st.session_state.messages.append({'role': 'user', 'content': user_input})
+    if st.button("Submit", key="submit_button"):
+        if not st.session_state.is_loading:
+            st.session_state.is_loading = True
+            
+            # Append user message to chat history
+            st.session_state.messages.append({'role': 'user', 'content': user_input})
 
-        # Initialize llm_response
-        llm_response = ""
+            # Initialize llm_response
+            llm_response = ""
 
-        # Send the user input along with the user profile and market sentiment to the LLM and fetch the response
-        user_profile_summary = st.session_state.user_profile.get_profile_summary()
-        system_context = get_system_context()
-        try:
-            response = st.session_state.gemini_chat.send_message(f"{system_context}\n\nUser Profile:\n{user_profile_summary}\n\nUser Message:\n{user_input}")
-            llm_response = ''.join([chunk.text for chunk in response])
-        except Exception as e:
-            st.error(f"Error getting LLM response: {str(e)}")
-            llm_response = "Error generating portfolio recommendation."
-        finally:
-            st.session_state.is_loading = False
+            # Send the user input along with the user profile and market sentiment to the LLM and fetch the response
+            user_profile_summary = st.session_state.user_profile.get_profile_summary()
+            system_context = get_system_context()
+            try:
+                response = st.session_state.gemini_chat.send_message(f"{system_context}\n\nUser Profile:\n{user_profile_summary}\n\nUser Message:\n{user_input}")
+                llm_response = ''.join([chunk.text for chunk in response])
+            except Exception as e:
+                st.error(f"Error getting LLM response: {str(e)}")
+                llm_response = "Error generating portfolio recommendation."
+            finally:
+                st.session_state.is_loading = False
 
-        # Process the LLM response and update the chat history
-        st.session_state.messages.append({'role': 'assistant', 'content': llm_response})
+            # Process the LLM response and update the chat history
+            st.session_state.messages.append({'role': 'assistant', 'content': llm_response})
 
-        # Extract the selected stocks, ETFs, funds, and bonds from the LLM response
-        portfolio_items = extract_portfolio_items(llm_response)
-
-        # Force Streamlit to rerun the script
-        st.experimental_rerun()
+            # Extract the selected stocks, ETFs, funds, and bonds from the LLM response
+            portfolio_items = extract_portfolio_items(llm_response)
 
     # Display loading message while processing
     if st.session_state.is_loading:
         st.markdown('<div class="loading-message">Processing your request...</div>', unsafe_allow_html=True)
-        st.button("Submit", disabled=True, key="disabled_submit_button")
-
-    # Display messages from the chat history
-    for message in st.session_state.messages:
-        message_class = "user-message" if message['role'] == 'user' else "assistant-message"
-        st.markdown(f'<div class="chat-message {message_class}">{message["content"]}</div>', unsafe_allow_html=True)
+    else:
+        # Display messages from the chat history
+        for message in st.session_state.messages:
+            message_class = "user-message" if message['role'] == 'user' else "assistant-message"
+            st.markdown(f'<div class="chat-message {message_class}">{message["content"]}</div>', unsafe_allow_html=True)
 
 with tab2:
     # Get market sentiment from the LLM
@@ -221,21 +218,31 @@ with tab3:
     
     # Define the few-shot prompt with random link selection
     few_shot_prompt = """
-Generate a new finance topic that is easy to understand for beginners, along with 2-3 popular blogs and YouTube videos related to that topic.
+Generate educational summaries for the following financial topics, providing useful blogs and videos for each. Each summary should briefly explain the topic and why it's important, followed by links to further reading or viewing.
 
-Example 1:
-Topic: Introduction to Budgeting
+1. **Topic: Understanding Stocks**
+Understanding stocks is crucial for anyone looking to invest in the stock market. Stocks represent ownership in a company and can provide significant returns over time. For beginners, grasping the basics of how stocks work is the first step toward successful investing.
 Blogs and Videos:
-- [Budgeting Basics for Beginners](https://www.nerdwallet.com/article/finance/budgeting-101)
-- [How to Create a Budget](https://www.youtube.com/watch?v=sVKQn2I4HDM)
-- [10 Budgeting Tips for Beginners](https://www.thebalance.com/budgeting-tips-for-beginners-4582425)
+- [Basics of What Stocks Are](https://www.investopedia.com/terms/s/stock.asp)
+- [Investing in Stocks: How to Start for Beginners](https://www.youtube.com/watch?v=ARrNYyJEnFI)
+- [How to Read Stock Charts](https://www.nerdwallet.com/article/investing/how-to-read-stock-charts)
 
-Example 2:
-Topic: Understanding Credit Scores
+2. **Topic: Financial Planning for Future Security**
+Financial planning is essential for securing a comfortable future. It involves setting financial goals, budgeting, saving, investing, and managing debt. Effective financial planning can help individuals achieve their long-term goals, such as retirement or buying a home.
 Blogs and Videos:
-- [What Is a Credit Score?](https://www.experian.com/blogs/ask-experian/credit-education/score-basics/what-is-a-credit-score/)
-- [Credit Scores Explained](https://www.youtube.com/watch?v=bWsNy1XRt0I)
-- [How to Improve Your Credit Score](https://www.nerdwallet.com/article/finance/raise-credit-score-fast)
+- [A Beginner's Guide to Financial Planning](https://www.forbes.com/advisor/financial-planning/financial-planning-where-to-start/)
+- [Financial Planning: A Comprehensive Guide](https://www.youtube.com/watch?v=0A5c8hFqIgU)
+- [Steps for Successful Financial Planning](https://www.nerdwallet.com/blog/investing/financial-planning-steps/)
+
+3. **Topic: Overcoming Common Financial Worries**
+Many individuals face common financial worries, such as debt, saving for retirement, and emergency funds. Understanding how to manage these concerns is key to financial well-being.
+Blogs and Videos:
+- [Managing Debt: Strategies and Tips](https://www.creditkarma.com/advice/i/how-to-get-out-of-debt)
+- [Saving for Retirement: Basics and Tips](https://www.youtube.com/watch?v=1C8Qlh5HCJ8)
+- [How to Build an Emergency Fund](https://www.bankrate.com/banking/savings/building-an-emergency-fund/)
+
+Please follow the above format to generate educational summaries for these topics, ensuring the information is clear, concise, and beneficial for individuals looking to improve their financial literacy.
+
 
 Example 3:
 Topic: {new_finance_topic}
