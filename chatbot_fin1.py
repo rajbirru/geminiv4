@@ -243,7 +243,6 @@ Blogs and Videos:
 
 Please follow the above format to generate educational summaries for these topics, ensuring the information is clear, concise, and beneficial for individuals looking to improve their financial literacy.
 
-
 Example 3:
 Topic: {new_finance_topic}
 Blogs and Videos:
