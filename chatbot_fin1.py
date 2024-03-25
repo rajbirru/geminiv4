@@ -182,10 +182,18 @@ with tab1:
         # Extract the selected stocks, ETFs, funds, and bonds from the LLM response
         portfolio_items = extract_portfolio_items(llm_response)
 
+        # Force Streamlit to rerun the script
+        st.experimental_rerun()
+
     # Display loading message while processing
     if st.session_state.is_loading:
         st.markdown('<div class="loading-message">Processing your request...</div>', unsafe_allow_html=True)
         st.button("Submit", disabled=True)
+
+    # Display messages from the chat history
+    for message in st.session_state.messages:
+        message_class = "user-message" if message['role'] == 'user' else "assistant-message"
+        st.markdown(f'<div class="chat-message {message_class}">{message["content"]}</div>', unsafe_allow_html=True)
 
 with tab2:
     # Get market sentiment from the LLM
