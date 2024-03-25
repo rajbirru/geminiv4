@@ -2,10 +2,9 @@ import streamlit as st
 import google.generativeai as genai
 from system_context import get_system_context
 from user_profile import UserProfile
-import matplotlib.pyplot as plt
-import plotly.express as px
 import re
 from portfolio_utils import extract_portfolio_items, display_portfolio_chart
+import random
 
 # Set page title and favicon
 st.set_page_config(page_title="FinanceGPT", page_icon=":money_with_wings:")
@@ -89,6 +88,25 @@ if 'messages' not in st.session_state:
 if 'user_profile' not in st.session_state:
     st.session_state.user_profile = UserProfile()
 
+# Initialize loading state
+if 'is_loading' not in st.session_state:
+    st.session_state.is_loading = False
+
+# Initialize default user input
+if 'default_user_input' not in st.session_state:
+    st.session_state.default_user_input = "Build a portfolio of Stocks, ETFs, Funds, Bonds, Bond funds, CDs and any cash equivalents"
+
+# Initialize user profile data in session state
+if 'user_profile_data' not in st.session_state:
+    st.session_state.user_profile_data = {
+        'investment_goals': 'Retirement',
+        'age': 39,
+        'retirement_age': 64,
+        'income': 50000,
+        'savings': 10000,
+        'risk_tolerance': 'Low'
+    }
+
 # Create tabs
 tab1, tab2, tab3 = st.tabs(["Advice", "Market Sentiment", "Learn"])
 
@@ -102,17 +120,32 @@ with tab1:
 
     # User profile input
     with st.expander("Build Your Profile"):
-        investment_goals = st.text_input("Enter your investment goals", value="Retirement")
-        age = st.slider("Your Age", min_value=18, max_value=100, value=30)
-        retirement_age = st.slider("Your Desired Retirement Age", min_value=18, max_value=100, value=60)
+        investment_goals = st.text_input("Enter your investment goals", value=st.session_state.user_profile_data['investment_goals'],
+                                         on_change=lambda: update_user_profile('investment_goals', investment_goals))
+        age = st.slider("Your Age", min_value=18, max_value=100, value=st.session_state.user_profile_data['age'],
+                        on_change=lambda: update_user_profile('age', age))
+        retirement_age = st.slider("Your Desired Retirement Age", min_value=18, max_value=100, value=st.session_state.user_profile_data['retirement_age'],
+                                   on_change=lambda: update_user_profile('retirement_age', retirement_age))
         time_horizon = retirement_age - age
         st.write(f"Investment Time Horizon: {time_horizon} years")
-        income = st.number_input("Enter your annual income", min_value=0, value=50000, step=1000)
-        savings = st.number_input("Enter your total savings", min_value=0, value=10000, step=1000)
-        risk_tolerance = st.selectbox("Select your risk tolerance", ("Low", "Medium", "High"))
+        income = st.number_input("Enter your annual income", min_value=0, value=st.session_state.user_profile_data['income'], step=1000,
+                                 on_change=lambda: update_user_profile('income', income))
+        savings = st.number_input("Enter your total savings", min_value=0, value=st.session_state.user_profile_data['savings'], step=1000,
+                                  on_change=lambda: update_user_profile('savings', savings))
+        risk_tolerance = st.selectbox("Select your risk tolerance", ("Low", "Medium", "High"), index=["Low", "Medium", "High"].index(st.session_state.user_profile_data['risk_tolerance']),
+                                      on_change=lambda: update_user_profile('risk_tolerance', risk_tolerance))
 
-        if st.button("Save Profile"):
-            st.session_state.user_profile.update_profile(age, retirement_age, time_horizon, income, savings, risk_tolerance, investment_goals)
+    def update_user_profile(key, value):
+        st.session_state.user_profile_data[key] = value
+        st.session_state.user_profile.update_profile(
+            st.session_state.user_profile_data['age'],
+            st.session_state.user_profile_data['retirement_age'],
+            st.session_state.user_profile_data['retirement_age'] - st.session_state.user_profile_data['age'],
+            st.session_state.user_profile_data['income'],
+            st.session_state.user_profile_data['savings'],
+            st.session_state.user_profile_data['risk_tolerance'],
+            st.session_state.user_profile_data['investment_goals']
+        )
 
     # Display messages from the chat history
     for message in st.session_state.messages:
@@ -120,38 +153,39 @@ with tab1:
         st.markdown(f'<div class="chat-message {message_class}">{message["content"]}</div>', unsafe_allow_html=True)
 
     # Input for the user's message
-    default_user_input = "Build me a portfolio of stocks, ETFs, Bonds and funds"
-    user_input = st.text_input("Type your message here...", value=default_user_input, key="user_input")
+    user_input = st.text_input("Type your message here...", value=st.session_state.default_user_input, key="user_input")
 
-if st.button("Submit"):
-    # Append user message to chat history
-    st.session_state.messages.append({'role': 'user', 'content': user_input})
+    if st.button("Submit", disabled=st.session_state.is_loading):
+        st.session_state.is_loading = True
+        
+        # Append user message to chat history
+        st.session_state.messages.append({'role': 'user', 'content': user_input})
 
-    # Initialize llm_response
-    llm_response = ""
+        # Initialize llm_response
+        llm_response = ""
 
-    # Send the user input along with the user profile and market sentiment to the LLM and fetch the response
-    user_profile_summary = st.session_state.user_profile.get_profile_summary()
-    system_context = get_system_context()
-    try:
-        response = st.session_state.gemini_chat.send_message(f"{system_context}\n\nUser Profile:\n{user_profile_summary}\n\nUser Message:\n{user_input}")
-        llm_response = ''.join([chunk.text for chunk in response])
-    except Exception as e:
-        st.error(f"Error getting LLM response: {str(e)}")
-        llm_response = "Error generating portfolio recommendation."
+        # Send the user input along with the user profile and market sentiment to the LLM and fetch the response
+        user_profile_summary = st.session_state.user_profile.get_profile_summary()
+        system_context = get_system_context()
+        try:
+            response = st.session_state.gemini_chat.send_message(f"{system_context}\n\nUser Profile:\n{user_profile_summary}\n\nUser Message:\n{user_input}")
+            llm_response = ''.join([chunk.text for chunk in response])
+        except Exception as e:
+            st.error(f"Error getting LLM response: {str(e)}")
+            llm_response = "Error generating portfolio recommendation."
+        finally:
+            st.session_state.is_loading = False
 
-    # Process the LLM response and update the chat history
-    st.session_state.messages.append({'role': 'assistant', 'content': llm_response})
+        # Process the LLM response and update the chat history
+        st.session_state.messages.append({'role': 'assistant', 'content': llm_response})
 
-    # Extract the selected stocks, ETFs, funds, and bonds from the LLM response
-    portfolio_items = extract_portfolio_items(llm_response)
+        # Extract the selected stocks, ETFs, funds, and bonds from the LLM response
+        portfolio_items = extract_portfolio_items(llm_response)
 
-    # # Display the portfolio chart
-    # if portfolio_items:
-    #     fig = display_portfolio_chart(portfolio_items)
-    #     st.plotly_chart(fig)
-    # else:
-    #     st.warning("No portfolio items found in the recommendation.")
+    # Display loading message while processing
+    if st.session_state.is_loading:
+        st.markdown('<div class="loading-message">Processing your request...</div>', unsafe_allow_html=True)
+        st.button("Submit", disabled=True)
 
 with tab2:
     # Get market sentiment from the LLM
@@ -176,13 +210,56 @@ with tab2:
 
 with tab3:
     st.markdown("### Learn")
-    st.write("Check out these prominent blogs and YouTube videos to enhance your financial knowledge:")
-    st.markdown("- [Investopedia](https://www.investopedia.com/)")
-    st.markdown("- [The Motley Fool](https://www.fool.com/)")
-    st.markdown("- [MarketWatch](https://www.marketwatch.com/)")
-    st.markdown("- [Graham Stephan YouTube Channel](https://www.youtube.com/c/GrahamStephan)")
-    st.markdown("- [Andrei Jikh YouTube Channel](https://www.youtube.com/c/AndreiJikh)")
+    
+    # Define the few-shot prompt with random link selection
+    few_shot_prompt = """
+Generate a new finance topic that is easy to understand for beginners, along with 2-3 popular blogs and YouTube videos related to that topic.
 
+Example 1:
+Topic: Introduction to Budgeting
+Blogs and Videos:
+- [Budgeting Basics for Beginners](https://www.nerdwallet.com/article/finance/budgeting-101)
+- [How to Create a Budget](https://www.youtube.com/watch?v=sVKQn2I4HDM)
+- [10 Budgeting Tips for Beginners](https://www.thebalance.com/budgeting-tips-for-beginners-4582425)
+
+Example 2:
+Topic: Understanding Credit Scores
+Blogs and Videos:
+- [What Is a Credit Score?](https://www.experian.com/blogs/ask-experian/credit-education/score-basics/what-is-a-credit-score/)
+- [Credit Scores Explained](https://www.youtube.com/watch?v=bWsNy1XRt0I)
+- [How to Improve Your Credit Score](https://www.nerdwallet.com/article/finance/raise-credit-score-fast)
+
+Example 3:
+Topic: {new_finance_topic}
+Blogs and Videos:
+-
+-
+-
+"""
+    
+    # Get a new finance topic and related resources from the LLM
+    try:
+        learn_response = st.session_state.gemini_chat.send_message(few_shot_prompt)
+        learn_content = ''.join([chunk.text for chunk in learn_response])
+    except Exception as e:
+        st.error(f"Error getting learn content: {str(e)}")
+        learn_content = "Error retrieving learn content."
+    
+    # Display the LLM-generated learn content
+    st.markdown(learn_content)
+    
+    # Display additional static resources
+    st.write("Check out these additional resources to enhance your financial knowledge:")
+    resources = [
+        "[Investopedia](https://www.investopedia.com/)",
+        "[The Motley Fool](https://www.fool.com/)",
+        "[MarketWatch](https://www.marketwatch.com/)",
+        "[Graham Stephan YouTube Channel](https://www.youtube.com/c/GrahamStephan)",
+        "[Andrei Jikh YouTube Channel](https://www.youtube.com/c/AndreiJikh)"
+    ]
+    random.shuffle(resources)
+    for resource in resources:
+        st.markdown(f"- {resource}")
 
 
 def extract_portfolio_items(response):
@@ -216,8 +293,8 @@ def display_portfolio_chart(portfolio_items):
     labels = list(portfolio_items.keys())
     values = [len(items) for items in portfolio_items.values()]
 
-    # # Create a pie chart
-    # fig = px.pie(values=values, names=labels, title="Portfolio Allocation")
+    # Create a pie chart
+    fig = px.pie(values=values, names=labels, title="Portfolio Allocation")
 
-    # # Display the chart in Streamlit
-    # st.plotly_chart(fig)
+    # Display the chart in Streamlit
+    st.plotly_chart(fig)
