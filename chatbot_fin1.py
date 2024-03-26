@@ -7,56 +7,30 @@ from portfolio_utils import extract_portfolio_items, display_portfolio_chart
 import random
 import time
 from few_shot_template import few_shot_template  # Import the few-shot template
+from market_sentiment import get_market_sentiment
+from styles import get_styles  # Import the styles
+from learn import display_learn_tab
+from financial_wisdom import show_random_finance_wisdom
+import plotly.graph_objects as go
+
+
+def display_portfolio_chart(portfolio_items):
+    # Prepare the data for the chart
+    labels = list(portfolio_items.keys())
+    values = [len(items) for items in portfolio_items.values()]
+
+    # Create a donut chart
+    fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=0.5)])
+    fig.update_layout(title_text="Portfolio Allocation", title_x=0.5)
+
+    # Display the chart in Streamlit
+    st.plotly_chart(fig)
 
 # Set page title and favicon
 st.set_page_config(page_title="FinanceGPT", page_icon=":money_with_wings:")
 
 # Apply modern styling
-st.markdown(
-    """
-    <style>
-    body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #f5f5f5;
-    }
-    .title {
-        font-size: 36px;
-        font-weight: bold;
-        color: #1f77b4;
-        margin-bottom: 20px;
-    }
-    .subtitle {
-        font-size: 24px;
-        color: #2c3e50;
-        margin-bottom: 30px;
-    }
-    .chat-message {
-        padding: 10px;
-        border-radius: 5px;
-        margin-bottom: 10px;
-    }
-    .user-message {
-        background-color: #e6f7ff;
-    }
-    .assistant-message {
-        background-color: #f0f8ff;
-    }
-    .bearish {
-        color: #FF0000;
-        font-weight: bold;
-    }
-    .bullish {
-        color: #00FF00;
-        font-weight: bold;
-    }
-    .neutral {
-        color: #FFA500;
-        font-weight: bold;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown(get_styles(), unsafe_allow_html=True)
 
 def suggest_portfolio(system_context, user_profile_summary, user_message, few_shot_template, investment_amount):
     prompt = f"""
@@ -155,7 +129,7 @@ with tab1:
         investment_goals = st.text_input("Enter your investment goals", value=st.session_state.user_profile_data['investment_goals'])
         age = st.slider("Your Age", min_value=18, max_value=100, value=st.session_state.user_profile_data['age'])
         retirement_age = st.slider("Your Desired Retirement Age", min_value=18, max_value=100, value=st.session_state.user_profile_data['retirement_age'])
-        investment_amount = st.number_input("Enter your desired investment amount", min_value=0, value=st.session_state.user_profile_data['investment_amount'], step=1000)
+        investment_amount = st.number_input("Amount Available for Investment", min_value=0, value=st.session_state.user_profile_data['investment_amount'], step=1000)
         time_horizon = retirement_age - age
         st.write(f"Investment Time Horizon: {time_horizon} years")
         income = st.number_input("Enter your annual income", min_value=0, value=st.session_state.user_profile_data['income'], step=1000)
@@ -231,88 +205,24 @@ with tab1:
         message_class = "user-message" if message['role'] == 'user' else "assistant-message"
         st.markdown(f'<div class="chat-message {message_class}">{message["content"]}</div>', unsafe_allow_html=True)
 
-with tab2:
-    # Get market sentiment from the LLM
-    market_sentiment_prompt = "Provide a brief overview of the current market sentiment, including any notable trends, all-time highs, bullish or bearish sentiment, and any indications of the current stage of the business cycle."
-    try:
-        market_sentiment_response = st.session_state.gemini_chat.send_message(market_sentiment_prompt)
-        market_sentiment = ''.join([chunk.text for chunk in market_sentiment_response])
-    except Exception as e:
-        st.error(f"Error getting market sentiment: {str(e)}")
-        market_sentiment = "Error retrieving market sentiment."
+    # Display the portfolio allocation chart
+    # display_portfolio_chart(portfolio_items)
+        
+    # Display a random quote from a financial expert at the bottom of Tab1
+    st.markdown("### Wisdom from Financial Experts")
+    quote = show_random_finance_wisdom()
+    st.markdown(quote)    
 
-    # Determine sentiment color based on keywords
-    sentiment_color = "neutral"
-    if "bearish" in market_sentiment.lower():
-        sentiment_color = "bearish"
-    elif "bullish" in market_sentiment.lower():
-        sentiment_color = "bullish"
+with tab2:
+    sentiment, sentiment_color, market_sentiment = get_market_sentiment(st.session_state.gemini_chat)
 
     # Display market sentiment with color coding
     st.markdown("### Market Sentiment")
-    st.markdown(f'<div class="{sentiment_color}">{market_sentiment}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div><span class="{sentiment_color}">{sentiment}</span></div>', unsafe_allow_html=True)
+    st.markdown(market_sentiment)
 
 with tab3:
-    st.markdown("### Learn")
-    
-    # Define the few-shot prompt with random link selection
-    few_shot_prompt = """
-Generate educational summaries for the following financial topics, providing useful blogs and videos for each. Each summary should briefly explain the topic and why it's important, followed by links to further reading or viewing.
-
-1. **Topic: Understanding Stocks**
-Understanding stocks is crucial for anyone looking to invest in the stock market. Stocks represent ownership in a company and can provide significant returns over time. For beginners, grasping the basics of how stocks work is the first step toward successful investing.
-Blogs and Videos:
-- [Basics of What Stocks Are](https://www.investopedia.com/terms/s/stock.asp)
-- [Investing in Stocks: How to Start for Beginners](https://www.youtube.com/watch?v=ARrNYyJEnFI)
-- [How to Read Stock Charts](https://www.nerdwallet.com/article/investing/how-to-read-stock-charts)
-
-2. **Topic: Financial Planning for Future Security**
-Financial planning is essential for securing a comfortable future. It involves setting financial goals, budgeting, saving, investing, and managing debt. Effective financial planning can help individuals achieve their long-term goals, such as retirement or buying a home.
-Blogs and Videos:
-- [A Beginner's Guide to Financial Planning](https://www.forbes.com/advisor/financial-planning/financial-planning-where-to-start/)
-- [Financial Planning: A Comprehensive Guide](https://www.youtube.com/watch?v=0A5c8hFqIgU)
-- [Steps for Successful Financial Planning](https://www.nerdwallet.com/blog/investing/financial-planning-steps/)
-
-3. **Topic: Overcoming Common Financial Worries**
-Many individuals face common financial worries, such as debt, saving for retirement, and emergency funds. Understanding how to manage these concerns is key to financial well-being.
-Blogs and Videos:
-- [Managing Debt: Strategies and Tips](https://www.creditkarma.com/advice/i/how-to-get-out-of-debt)
-- [Saving for Retirement: Basics and Tips](https://www.youtube.com/watch?v=1C8Qlh5HCJ8)
-- [How to Build an Emergency Fund](https://www.bankrate.com/banking/savings/building-an-emergency-fund/)
-
-Please follow the above format to generate educational summaries for these topics, ensuring the information is clear, concise, and beneficial for individuals looking to improve their financial literacy.
-
-Example 3:
-Topic: {new_finance_topic}
-Blogs and Videos:
--
--
--
-"""
-    
-    # Get a new finance topic and related resources from the LLM
-    try:
-        learn_response = st.session_state.gemini_chat.send_message(few_shot_prompt)
-        learn_content = ''.join([chunk.text for chunk in learn_response])
-    except Exception as e:
-        st.error(f"Error getting learn content: {str(e)}")
-        learn_content = "Error retrieving learn content."
-    
-    # Display the LLM-generated learn content
-    st.markdown(learn_content)
-    
-    # Display additional static resources
-    st.write("Check out these additional resources to enhance your financial knowledge:")
-    resources = [
-        "[Investopedia](https://www.investopedia.com/)",
-        "[The Motley Fool](https://www.fool.com/)",
-        "[MarketWatch](https://www.marketwatch.com/)",
-        "[Graham Stephan YouTube Channel](https://www.youtube.com/c/GrahamStephan)",
-        "[Andrei Jikh YouTube Channel](https://www.youtube.com/c/AndreiJikh)"
-    ]
-    random.shuffle(resources)
-    for resource in resources:
-        st.markdown(f"- {resource}")
+    display_learn_tab(st.session_state.gemini_chat, st.session_state.user_profile_data)
 
 
 def extract_portfolio_items(response):
@@ -342,12 +252,19 @@ def extract_portfolio_items(response):
     return portfolio_items
 
 def display_portfolio_chart(portfolio_items):
-    # Prepare the data for the chart
-    labels = list(portfolio_items.keys())
-    values = [len(items) for items in portfolio_items.values()]
+# Display the portfolio allocation chart if portfolio items are extracted correctly
+    if portfolio_items and all(portfolio_items.values()):
+        # Prepare the data for the chart
+        labels = list(portfolio_items.keys())
+        values = [len(items) for items in portfolio_items.values()]
+        total_items = sum(values)
 
-    # Create a pie chart
-    fig = px.pie(values=values, names=labels, title="Portfolio Allocation")
+        # Calculate the percentages for each asset class
+        percentages = [round(value / total_items * 100, 2) for value in values]
 
-    # Display the chart in Streamlit
-    st.plotly_chart(fig)
+        # Create a donut chart
+        fig = go.Figure(data=[go.Pie(labels=labels, values=percentages, hole=0.5, textinfo='label+percent')])
+        fig.update_layout(title_text="Portfolio Allocation", title_x=0.5)
+
+        # Display the chart in Streamlit
+        st.plotly_chart(fig)

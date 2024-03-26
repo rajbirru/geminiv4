@@ -53,9 +53,9 @@ User Message: Build a portfolio of Stocks, ETFs, Funds, Bonds, Bond funds, CDs a
 
 Total Investment Amount: $10,000.00
 
-**Instructions:**  
+Instructions:
 
-1. **Construct a portfolio with 10-25 investments.** 
+1. **Construct a portfolio with 10-25 investments.**
 2. **Allocate assets based on the risk profile, time horizon, and investment amount.**
 3. **Present your recommendation in the following table format:**
 
@@ -63,5 +63,5 @@ Total Investment Amount: $10,000.00
 |---|---|---|---|
 | ... | ... | ... | ... |
 
-4. **Ensure the total allocation adds up to 100%.**
+4. **Ensure the total allocation adds up to 100%. Provide a brief rationale less than 250 words for the selection of specific investments.**
 """
