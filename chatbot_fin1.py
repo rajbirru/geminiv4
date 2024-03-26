@@ -240,7 +240,7 @@ with tab3:
 
 with tab4:
     # st.markdown("### Latest Market News")
-    display_market_news_tab(st.session_state.gemini_chat)
+    # display_market_news_tab(st.session_state.gemini_chat)
 
 def extract_portfolio_items(response):
     portfolio_items = {
