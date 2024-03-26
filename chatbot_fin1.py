@@ -134,8 +134,8 @@ if 'user_profile_data' not in st.session_state:
         'retirement_age': 65,
         'income': 150000,
         'savings': 10000,
-        'investment_amount': 10000,
-        'risk_tolerance': 'Low'
+        'investment_amount': 200000,
+        'risk_tolerance': 'Medium'
     }
 
 # Create tabs
