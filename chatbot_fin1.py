@@ -2,11 +2,49 @@ import streamlit as st
 import google.generativeai as genai
 from system_context import get_system_context
 from user_profile import UserProfile
-from few_shot_template import few_shot_template
+import re
+from portfolio_utils import extract_portfolio_items, display_portfolio_chart
+import random
+import time
+from few_shot_template import few_shot_template  # Import the few-shot template
 from market_sentiment import get_market_sentiment
+from styles import get_styles  # Import the styles
 from learn import display_learn_tab
 from financial_wisdom import show_random_finance_wisdom
 from market_news import generate_financial_news_prompt
+import plotly.graph_objects as go
+
+
+def display_portfolio_chart(portfolio_items):
+    # Prepare the data for the chart
+    labels = list(portfolio_items.keys())
+    values = [len(items) for items in portfolio_items.values()]
+
+    # Create a donut chart
+    fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=0.5)])
+    fig.update_layout(title_text="Portfolio Allocation", title_x=0.5)
+
+    # Display the chart in Streamlit
+    st.plotly_chart(fig)
+
+# Set page title and favicon
+st.set_page_config(page_title="FinanceGPT", page_icon=":money_with_wings:")
+
+# Apply modern styling
+st.markdown(get_styles(), unsafe_allow_html=True)
+
+def display_market_news_tab(chat_instance):
+    st.markdown("### Market News")
+
+    try:
+        news_prompt = generate_financial_news_prompt()
+        news_response = chat_instance.send_message(news_prompt)
+        news_content = ''.join([chunk.text for chunk in news_response])
+    except Exception as e:
+        st.error(f"Error getting market news: {str(e)}")
+        news_content = "Error retrieving market news."
+
+    st.markdown(news_content)
 
 def suggest_portfolio(system_context, user_profile_summary, user_message, few_shot_template, investment_amount):
     prompt = f"""
@@ -25,10 +63,15 @@ def suggest_portfolio(system_context, user_profile_summary, user_message, few_sh
     Response:
     """
 
+    print("LLM Request:")
+    print(prompt)  # Print the prompt string
+
     try:
         response = st.session_state.gemini_chat.send_message(prompt)
         portfolio_recommendation = ''.join([chunk.text for chunk in response])
         return portfolio_recommendation
+    except google.api_core.exceptions.DeadlineExceeded:
+        return "The request timed out due to the GenAI API limitations. Please try again later or consider simplifying your request."
     except Exception as e:
         return f"An error occurred while getting the LLM response: {str(e)}"
 
@@ -64,6 +107,10 @@ if 'messages' not in st.session_state:
 if 'user_profile' not in st.session_state:
     st.session_state.user_profile = UserProfile()
 
+# Initialize loading state
+if 'is_loading' not in st.session_state:
+    st.session_state.is_loading = False
+
 # Initialize default user input
 if 'default_user_input' not in st.session_state:
     st.session_state.default_user_input = "Build a portfolio of Stocks, ETFs, Funds, Bonds, Bond funds, CDs and any cash equivalents"
@@ -85,8 +132,11 @@ tab1, tab2, tab3, tab4 = st.tabs(["Advice", "Market Sentiment", "Learn", "News"]
 
 with tab1:
     # Title and subtitle
-    st.title("FinanceGPT")
-    st.subheader("Your Personal Finance Assistant")
+    st.markdown('<div class="title">FinanceGPT</div>', unsafe_allow_html=True)
+    st.markdown('<div class="subtitle">Your Personal Finance Assistant</div>', unsafe_allow_html=True)
+
+    # Initialize portfolio_items
+    portfolio_items = {}
 
     # User profile input
     with st.expander("Build Your Profile"):
@@ -123,57 +173,115 @@ with tab1:
 
     # Display messages from the chat history
     for message in st.session_state.messages:
-        if message['role'] == 'user':
-            st.write(f"User: {message['content']}")
-        else:
-            st.write(f"Assistant: {message['content']}")
+        message_class = "user-message" if message['role'] == 'user' else "assistant-message"
+        st.markdown(f'<div class="chat-message {message_class}">{message["content"]}</div>', unsafe_allow_html=True)
 
     # Input for the user's message
     user_input = st.text_input("Type your message here...", value=st.session_state.default_user_input, key="user_input")
 
     if st.button("Submit", key="submit_button"):
-        # Append user message to chat history
-        st.session_state.messages.append({'role': 'user', 'content': user_input})
+        if not st.session_state.is_loading:
+            st.session_state.is_loading = True
 
-        # Initialize llm_response
-        llm_response = ""
+            # Append user message to chat history
+            st.session_state.messages.append({'role': 'user', 'content': user_input})
 
-        # Get the user profile summary, system context, few-shot template, and investment amount
-        user_profile_summary = st.session_state.user_profile.get_profile_summary()
-        system_context = get_system_context()
-        investment_amount = st.session_state.user_profile_data['investment_amount']
+            # Initialize llm_response
+            llm_response = ""
 
-        llm_response = suggest_portfolio(system_context, user_profile_summary, user_input, few_shot_template, investment_amount)
+            # Get the user profile summary, system context, few-shot template, and investment amount
+            user_profile_summary = st.session_state.user_profile.get_profile_summary()
+            system_context = get_system_context()
+            investment_amount = st.session_state.user_profile_data['investment_amount']
 
-        # Process the LLM response and update the chat history
-        st.session_state.messages.append({'role': 'assistant', 'content': llm_response})
+            with st.spinner('Hanging tight! The LLM is currently navigating through the maze of market insights...'):
+                llm_response = suggest_portfolio(system_context, user_profile_summary, user_input, few_shot_template, investment_amount)
+
+            # Process the LLM response and update the chat history
+            st.session_state.messages.append({'role': 'assistant', 'content': llm_response})
+
+            # Extract the selected stocks, ETFs, funds, and bonds from the LLM response
+            portfolio_items = extract_portfolio_items(llm_response)
+
+            st.session_state.is_loading = False
+
+    # Display loading message while processing
+    if st.session_state.is_loading:
+        start_time = time.time()
+        while time.time() - start_time < 60:  # Wait for 60 seconds before displaying the "taking longer" message
+            st.markdown('<div class="loading-message">Processing your request...</div>', unsafe_allow_html=True)
+            time.sleep(0.1)
+        else:
+            st.markdown('<div class="loading-message">The request is taking longer than expected. Please be patient...</div>', unsafe_allow_html=True)
 
     # Display messages from the chat history
     for message in st.session_state.messages:
-        if message['role'] == 'user':
-            st.write(f"User: {message['content']}")
-        else:
-            st.write(f"Assistant: {message['content']}")
+        message_class = "user-message" if message['role'] == 'user' else "assistant-message"
+        st.markdown(f'<div class="chat-message {message_class}">{message["content"]}</div>', unsafe_allow_html=True)
 
-    # Display a random quote from a financial expert at the bottom
+    # Display the portfolio allocation chart
+    # display_portfolio_chart(portfolio_items)
+        
+    # Display a random quote from a financial expert at the bottom of Tab1
+    # st.markdown("### Wisdom from Financial Experts")
     quote = show_random_finance_wisdom()
-    if quote:
-        st.markdown(quote)
+    st.markdown(quote)    
 
 with tab2:
     sentiment, sentiment_color, market_sentiment = get_market_sentiment(st.session_state.gemini_chat)
 
     # Display market sentiment with color coding
     st.markdown("### Market Sentiment")
-    st.markdown(f'<div><span style="color: {sentiment_color};">{sentiment}</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div><span class="{sentiment_color}">{sentiment}</span></div>', unsafe_allow_html=True)
     st.markdown(market_sentiment)
 
 with tab3:
     display_learn_tab(st.session_state.gemini_chat, st.session_state.user_profile_data)
 
 with tab4:
-    st.markdown("### Latest Market News")
-    news_prompt = generate_financial_news_prompt()
-    news_response = st.session_state.gemini_chat.send_message(news_prompt)
-    news_content = ''.join([chunk.text for chunk in news_response])
-    st.markdown(news_content)
+    # st.markdown("### Latest Market News")
+    display_market_news_tab(st.session_state.gemini_chat)
+
+def extract_portfolio_items(response):
+    portfolio_items = {
+        "Stocks": [],
+        "ETFs": [],
+        "Funds": [],
+        "Bonds": []
+    }
+
+    # Use regular expressions to extract tickers/symbols from the response
+    stock_regex = r"(\b[A-Z]+\b)"
+    etf_regex = r"(\b[A-Z]+\b(?= ETF))"
+    fund_regex = r"(\b[A-Z]+\b(?= Fund))"
+    bond_regex = r"(\b[A-Z]+\b(?= Bond))"
+
+    stocks = re.findall(stock_regex, response, re.IGNORECASE)
+    etfs = re.findall(etf_regex, response, re.IGNORECASE)
+    funds = re.findall(fund_regex, response, re.IGNORECASE)
+    bonds = re.findall(bond_regex, response, re.IGNORECASE)
+
+    portfolio_items["Stocks"] = stocks
+    portfolio_items["ETFs"] = etfs
+    portfolio_items["Funds"] = funds
+    portfolio_items["Bonds"] = bonds
+
+    return portfolio_items
+
+def display_portfolio_chart(portfolio_items):
+# Display the portfolio allocation chart if portfolio items are extracted correctly
+    if portfolio_items and all(portfolio_items.values()):
+        # Prepare the data for the chart
+        labels = list(portfolio_items.keys())
+        values = [len(items) for items in portfolio_items.values()]
+        total_items = sum(values)
+
+        # Calculate the percentages for each asset class
+        percentages = [round(value / total_items * 100, 2) for value in values]
+
+        # Create a donut chart
+        fig = go.Figure(data=[go.Pie(labels=labels, values=percentages, hole=0.5, textinfo='label+percent')])
+        fig.update_layout(title_text="Portfolio Allocation", title_x=0.5)
+
+        # Display the chart in Streamlit
+        st.plotly_chart(fig) 
