@@ -131,12 +131,23 @@ if 'user_profile_data' not in st.session_state:
 tab1, tab2, tab3, tab4 = st.tabs(["Advice", "Market Sentiment", "Learn", "News"])
 
 with tab1:
-    # Title and subtitle
-    st.markdown('<div class="title">FinanceGPT</div>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle">Your Personal Finance Assistant</div>', unsafe_allow_html=True)
+    st.title("FinanceGPT")
+    st.subheader("Your Personal Finance Assistant")
 
-    # Initialize portfolio_items
-    portfolio_items = {}
+    # User profile input
+    with st.expander("Build Your Profile"):
+        col1, col2 = st.columns(2)
+        with col1:
+            investment_goals = st.text_input("Enter your investment goals", value=st.session_state.user_profile_data['investment_goals'])
+            age = st.slider("Your Age", min_value=18, max_value=100, value=st.session_state.user_profile_data['age'])
+            retirement_age = st.slider("Your Desired Retirement Age", min_value=18, max_value=100, value=st.session_state.user_profile_data['retirement_age'])
+            investment_amount = st.number_input("Amount Available for Investment", min_value=0, value=st.session_state.user_profile_data['investment_amount'], step=1000)
+            time_horizon = retirement_age - age
+            st.write(f"Investment Time Horizon: {time_horizon} years")
+        with col2:
+            income = st.number_input("Enter your annual income", min_value=0, value=st.session_state.user_profile_data['income'], step=1000)
+            savings = st.number_input("Enter your total savings", min_value=0, value=st.session_state.user_profile_data['savings'], step=1000)
+            risk_tolerance = st.selectbox("Select your risk tolerance", ("Low", "Medium", "High"), index=["Low", "Medium", "High"].index(st.session_state.user_profile_data['risk_tolerance']))
 
     # User profile input
     with st.expander("Build Your Profile"):
