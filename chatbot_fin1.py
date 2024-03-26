@@ -55,8 +55,10 @@ def suggest_portfolio(system_context, user_profile_summary, user_message, few_sh
         response = st.session_state.gemini_chat.send_message(prompt)
         portfolio_recommendation = ''.join([chunk.text for chunk in response])
         return portfolio_recommendation
+    except google.generativeai.types.generation_types.StopCandidateException as e:
+        return f"The model encountered a stop condition: {str(e)}"
     except google.api_core.exceptions.DeadlineExceeded:
-        return "The request timed out due to the GenAI API limitations. Please try again later or consider simplifying your request."
+        return "The request timed out due to the GenAI API limitations. Please try again later."
     except Exception as e:
         return f"An error occurred while getting the LLM response: {str(e)}"
 
