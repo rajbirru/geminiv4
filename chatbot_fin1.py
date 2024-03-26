@@ -5,6 +5,8 @@ from user_profile import UserProfile
 import re
 from portfolio_utils import extract_portfolio_items, display_portfolio_chart
 import random
+import time
+from few_shot_template import few_shot_template  # Import the few-shot template
 
 # Set page title and favicon
 st.set_page_config(page_title="FinanceGPT", page_icon=":money_with_wings:")
@@ -55,6 +57,37 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+def suggest_portfolio(system_context, user_profile_summary, user_message, few_shot_template, total_investment_amount):
+    """Suggests a portfolio based on the user's profile, message, and provided examples."""
+
+    prompt = f"""
+    ## System Context
+    {system_context}
+
+    ## User Profile
+    {user_profile_summary}
+
+    ## User Message
+    {user_message}
+
+    ## Few-Shot Template
+    {few_shot_template}
+
+    ## Total Investment Amount
+    ${total_investment_amount:,.2f}
+
+    ## Response
+    """
+
+    try:
+        response = st.session_state.gemini_chat.send_message(prompt)
+        portfolio_recommendation = ''.join([chunk.text for chunk in response])
+        return portfolio_recommendation
+    except google.api_core.exceptions.DeadlineExceeded:
+        return "The request timed out due to the GenAI API limitations. Please try again later or consider simplifying your request."
+    except Exception as e:
+        return f"An error occurred while getting the LLM response: {str(e)}"
 
 # Access your GOOGLE_API_KEY
 google_api_key = st.secrets["GOOGLE_API_KEY"]
@@ -152,45 +185,48 @@ with tab1:
         message_class = "user-message" if message['role'] == 'user' else "assistant-message"
         st.markdown(f'<div class="chat-message {message_class}">{message["content"]}</div>', unsafe_allow_html=True)
 
-    # Input for the user's message
-    user_input = st.text_input("Type your message here...", value=st.session_state.default_user_input, key="user_input")
+# Input for the user's message
+user_input = st.text_input("Type your message here...", value=st.session_state.default_user_input, key="user_input")
 
-    if st.button("Submit", key="submit_button"):
-        if not st.session_state.is_loading:
-            st.session_state.is_loading = True
-            
-            # Append user message to chat history
-            st.session_state.messages.append({'role': 'user', 'content': user_input})
+if st.button("Submit", key="submit_button"):
+    if not st.session_state.is_loading:
+        st.session_state.is_loading = True
 
-            # Initialize llm_response
-            llm_response = ""
+        # Append user message to chat history
+        st.session_state.messages.append({'role': 'user', 'content': user_input})
 
-            # Send the user input along with the user profile and market sentiment to the LLM and fetch the response
-            user_profile_summary = st.session_state.user_profile.get_profile_summary()
-            system_context = get_system_context()
-            try:
-                response = st.session_state.gemini_chat.send_message(f"{system_context}\n\nUser Profile:\n{user_profile_summary}\n\nUser Message:\n{user_input}")
-                llm_response = ''.join([chunk.text for chunk in response])
-            except Exception as e:
-                st.error(f"Error getting LLM response: {str(e)}")
-                llm_response = "Error generating portfolio recommendation."
-            finally:
-                st.session_state.is_loading = False
+        # Initialize llm_response
+        llm_response = ""
 
-            # Process the LLM response and update the chat history
-            st.session_state.messages.append({'role': 'assistant', 'content': llm_response})
+        # Get the user profile summary, system context, few-shot template, and total investment amount
+        user_profile_summary = st.session_state.user_profile.get_profile_summary()
+        system_context = get_system_context()
+        total_investment_amount = st.session_state.user_profile.savings
 
-            # Extract the selected stocks, ETFs, funds, and bonds from the LLM response
-            portfolio_items = extract_portfolio_items(llm_response)
+        with st.spinner('Hanging tight! The LLM is currently navigating through the maze of market insights...'):
+            llm_response = suggest_portfolio(system_context, user_profile_summary, user_input, few_shot_template, total_investment_amount)
+
+        # Process the LLM response and update the chat history
+        st.session_state.messages.append({'role': 'assistant', 'content': llm_response})
+
+        # Extract the selected stocks, ETFs, funds, and bonds from the LLM response
+        portfolio_items = extract_portfolio_items(llm_response)
+
+        st.session_state.is_loading = False
 
     # Display loading message while processing
     if st.session_state.is_loading:
-        st.markdown('<div class="loading-message">Processing your request...</div>', unsafe_allow_html=True)
-    else:
-        # Display messages from the chat history
-        for message in st.session_state.messages:
-            message_class = "user-message" if message['role'] == 'user' else "assistant-message"
-            st.markdown(f'<div class="chat-message {message_class}">{message["content"]}</div>', unsafe_allow_html=True)
+        start_time = time.time()
+        while time.time() - start_time < 60:  # Wait for 60 seconds before displaying the "taking longer" message
+            st.markdown('<div class="loading-message">Processing your request...</div>', unsafe_allow_html=True)
+            time.sleep(0.1)
+        else:
+            st.markdown('<div class="loading-message">The request is taking longer than expected. Please be patient...</div>', unsafe_allow_html=True)
+
+    # Display messages from the chat history
+    for message in st.session_state.messages:
+        message_class = "user-message" if message['role'] == 'user' else "assistant-message"
+        st.markdown(f'<div class="chat-message {message_class}">{message["content"]}</div>', unsafe_allow_html=True)
 
 with tab2:
     # Get market sentiment from the LLM
