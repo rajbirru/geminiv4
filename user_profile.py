@@ -5,6 +5,7 @@ class UserProfile:
         self.time_horizon = None
         self.income = None
         self.savings = None
+        self.investment_amount = None
         self.risk_tolerance = None
         self.investment_goals = None
 
@@ -14,6 +15,7 @@ class UserProfile:
         self.time_horizon = time_horizon
         self.income = income
         self.savings = savings
+        self.investment_amount = investment_amount
         self.risk_tolerance = risk_tolerance
         self.investment_goals = investment_goals
 
@@ -23,6 +25,7 @@ class UserProfile:
         profile_summary += f"Investment Time Horizon: {self.time_horizon} years\n"
         profile_summary += f"Income: {self.income}\n"
         profile_summary += f"Savings: {self.savings}\n"
+        profile_summary += f"Investment Amount: {self.investment_amount}\n"
         profile_summary += f"Risk Tolerance: {self.risk_tolerance}\n"
         profile_summary += f"Investment Goals: {self.investment_goals}"
         return profile_summary
