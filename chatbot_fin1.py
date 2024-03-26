@@ -285,3 +285,4 @@ def display_portfolio_chart(portfolio_items):
 
         # Display the chart in Streamlit
         st.plotly_chart(fig) 
+        
