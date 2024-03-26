@@ -28,7 +28,7 @@ def display_portfolio_chart(portfolio_items):
     st.plotly_chart(fig)
 
 # Set page title and favicon
-st.set_page_config(page_title="FinanceGPT", page_icon=":money_with_wings:")
+# st.set_page_config(page_title="FinanceGPT", page_icon=":money_with_wings:")
 
 # Apply modern styling
 st.markdown(get_styles(), unsafe_allow_html=True)
@@ -285,4 +285,3 @@ def display_portfolio_chart(portfolio_items):
 
         # Display the chart in Streamlit
         st.plotly_chart(fig) 
-        
