@@ -238,9 +238,9 @@ with tab2:
 with tab3:
     display_learn_tab(st.session_state.gemini_chat, st.session_state.user_profile_data)
 
-with tab4:
-    # st.markdown("### Latest Market News")
-    # display_market_news_tab(st.session_state.gemini_chat)
+# with tab4:
+#     # st.markdown("### Latest Market News")
+#     # display_market_news_tab(st.session_state.gemini_chat)
 
 def extract_portfolio_items(response):
     portfolio_items = {
