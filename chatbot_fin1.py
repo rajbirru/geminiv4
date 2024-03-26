@@ -2,7 +2,6 @@ import streamlit as st
 import google.generativeai as genai
 from system_context import get_system_context
 from user_profile import UserProfile
-import re
 from few_shot_template import few_shot_template
 from market_sentiment import get_market_sentiment
 from learn import display_learn_tab
@@ -81,77 +80,100 @@ if 'user_profile_data' not in st.session_state:
         'risk_tolerance': 'Low'
     }
 
-# Title and subtitle
-st.title("FinanceGPT")
-st.subheader("Your Personal Finance Assistant")
+# Create tabs
+tab1, tab2, tab3, tab4 = st.tabs(["Advice", "Market Sentiment", "Learn", "News"])
 
-# User profile input
-with st.expander("Build Your Profile"):
-    investment_goals = st.text_input("Enter your investment goals", value=st.session_state.user_profile_data['investment_goals'])
-    age = st.slider("Your Age", min_value=18, max_value=100, value=st.session_state.user_profile_data['age'])
-    retirement_age = st.slider("Your Desired Retirement Age", min_value=18, max_value=100, value=st.session_state.user_profile_data['retirement_age'])
-    investment_amount = st.number_input("Amount Available for Investment", min_value=0, value=st.session_state.user_profile_data['investment_amount'], step=1000)
-    time_horizon = retirement_age - age
-    st.write(f"Investment Time Horizon: {time_horizon} years")
-    income = st.number_input("Enter your annual income", min_value=0, value=st.session_state.user_profile_data['income'], step=1000)
-    savings = st.number_input("Enter your total savings", min_value=0, value=st.session_state.user_profile_data['savings'], step=1000)
-    risk_tolerance = st.selectbox("Select your risk tolerance", ("Low", "Medium", "High"), index=["Low", "Medium", "High"].index(st.session_state.user_profile_data['risk_tolerance']))
+with tab1:
+    # Title and subtitle
+    st.title("FinanceGPT")
+    st.subheader("Your Personal Finance Assistant")
 
-    if st.button("Update Profile"):
-        st.session_state.user_profile_data = {
-            'investment_goals': investment_goals,
-            'age': age,
-            'retirement_age': retirement_age,
-            'income': income,
-            'savings': savings,
-            'investment_amount': investment_amount,
-            'risk_tolerance': risk_tolerance
-        }
-        st.session_state.user_profile.update_profile(
-            st.session_state.user_profile_data['age'],
-            st.session_state.user_profile_data['retirement_age'],
-            st.session_state.user_profile_data['retirement_age'] - st.session_state.user_profile_data['age'],
-            st.session_state.user_profile_data['income'],
-            st.session_state.user_profile_data['savings'],
-            st.session_state.user_profile_data['investment_amount'],
-            st.session_state.user_profile_data['risk_tolerance'],
-            st.session_state.user_profile_data['investment_goals']
-        )
+    # User profile input
+    with st.expander("Build Your Profile"):
+        investment_goals = st.text_input("Enter your investment goals", value=st.session_state.user_profile_data['investment_goals'])
+        age = st.slider("Your Age", min_value=18, max_value=100, value=st.session_state.user_profile_data['age'])
+        retirement_age = st.slider("Your Desired Retirement Age", min_value=18, max_value=100, value=st.session_state.user_profile_data['retirement_age'])
+        investment_amount = st.number_input("Amount Available for Investment", min_value=0, value=st.session_state.user_profile_data['investment_amount'], step=1000)
+        time_horizon = retirement_age - age
+        st.write(f"Investment Time Horizon: {time_horizon} years")
+        income = st.number_input("Enter your annual income", min_value=0, value=st.session_state.user_profile_data['income'], step=1000)
+        savings = st.number_input("Enter your total savings", min_value=0, value=st.session_state.user_profile_data['savings'], step=1000)
+        risk_tolerance = st.selectbox("Select your risk tolerance", ("Low", "Medium", "High"), index=["Low", "Medium", "High"].index(st.session_state.user_profile_data['risk_tolerance']))
 
-# Display messages from the chat history
-for message in st.session_state.messages:
-    if message['role'] == 'user':
-        st.write(f"User: {message['content']}")
-    else:
-        st.write(f"Assistant: {message['content']}")
+        if st.button("Update Profile"):
+            st.session_state.user_profile_data = {
+                'investment_goals': investment_goals,
+                'age': age,
+                'retirement_age': retirement_age,
+                'income': income,
+                'savings': savings,
+                'investment_amount': investment_amount,
+                'risk_tolerance': risk_tolerance
+            }
+            st.session_state.user_profile.update_profile(
+                st.session_state.user_profile_data['age'],
+                st.session_state.user_profile_data['retirement_age'],
+                st.session_state.user_profile_data['retirement_age'] - st.session_state.user_profile_data['age'],
+                st.session_state.user_profile_data['income'],
+                st.session_state.user_profile_data['savings'],
+                st.session_state.user_profile_data['investment_amount'],
+                st.session_state.user_profile_data['risk_tolerance'],
+                st.session_state.user_profile_data['investment_goals']
+            )
 
-# Input for the user's message
-user_input = st.text_input("Type your message here...", value=st.session_state.default_user_input, key="user_input")
+    # Display messages from the chat history
+    for message in st.session_state.messages:
+        if message['role'] == 'user':
+            st.write(f"User: {message['content']}")
+        else:
+            st.write(f"Assistant: {message['content']}")
 
-if st.button("Submit", key="submit_button"):
-    # Append user message to chat history
-    st.session_state.messages.append({'role': 'user', 'content': user_input})
+    # Input for the user's message
+    user_input = st.text_input("Type your message here...", value=st.session_state.default_user_input, key="user_input")
 
-    # Initialize llm_response
-    llm_response = ""
+    if st.button("Submit", key="submit_button"):
+        # Append user message to chat history
+        st.session_state.messages.append({'role': 'user', 'content': user_input})
 
-    # Get the user profile summary, system context, few-shot template, and investment amount
-    user_profile_summary = st.session_state.user_profile.get_profile_summary()
-    system_context = get_system_context()
-    investment_amount = st.session_state.user_profile_data['investment_amount']
+        # Initialize llm_response
+        llm_response = ""
 
-    llm_response = suggest_portfolio(system_context, user_profile_summary, user_input, few_shot_template, investment_amount)
+        # Get the user profile summary, system context, few-shot template, and investment amount
+        user_profile_summary = st.session_state.user_profile.get_profile_summary()
+        system_context = get_system_context()
+        investment_amount = st.session_state.user_profile_data['investment_amount']
 
-    # Process the LLM response and update the chat history
-    st.session_state.messages.append({'role': 'assistant', 'content': llm_response})
+        llm_response = suggest_portfolio(system_context, user_profile_summary, user_input, few_shot_template, investment_amount)
 
-# Display messages from the chat history
-for message in st.session_state.messages:
-    if message['role'] == 'user':
-        st.write(f"User: {message['content']}")
-    else:
-        st.write(f"Assistant: {message['content']}")
+        # Process the LLM response and update the chat history
+        st.session_state.messages.append({'role': 'assistant', 'content': llm_response})
 
-# Display a random quote from a financial expert at the bottom
-quote = show_random_finance_wisdom()
-st.markdown(quote)
+    # Display messages from the chat history
+    for message in st.session_state.messages:
+        if message['role'] == 'user':
+            st.write(f"User: {message['content']}")
+        else:
+            st.write(f"Assistant: {message['content']}")
+
+    # Display a random quote from a financial expert at the bottom
+    quote = show_random_finance_wisdom()
+    if quote:
+        st.markdown(quote)
+
+with tab2:
+    sentiment, sentiment_color, market_sentiment = get_market_sentiment(st.session_state.gemini_chat)
+
+    # Display market sentiment with color coding
+    st.markdown("### Market Sentiment")
+    st.markdown(f'<div><span style="color: {sentiment_color};">{sentiment}</span></div>', unsafe_allow_html=True)
+    st.markdown(market_sentiment)
+
+with tab3:
+    display_learn_tab(st.session_state.gemini_chat, st.session_state.user_profile_data)
+
+with tab4:
+    st.markdown("### Latest Market News")
+    news_prompt = generate_financial_news_prompt()
+    news_response = st.session_state.gemini_chat.send_message(news_prompt)
+    news_content = ''.join([chunk.text for chunk in news_response])
+    st.markdown(news_content)
