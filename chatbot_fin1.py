@@ -58,27 +58,25 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-def suggest_portfolio(system_context, user_profile_summary, user_message, few_shot_template, total_investment_amount):
-    """Suggests a portfolio based on the user's profile, message, and provided examples."""
-
+def suggest_portfolio(system_context, user_profile_summary, user_message, few_shot_template, investment_amount):
     prompt = f"""
-    ## System Context
     {system_context}
 
-    ## User Profile
-    {user_profile_summary}
-
-    ## User Message
-    {user_message}
-
-    ## Few-Shot Template
     {few_shot_template}
 
-    ## Total Investment Amount
-    ${total_investment_amount:,.2f}
+    User Profile:
+    {user_profile_summary}
 
-    ## Response
+    User Message:
+    {user_message}
+
+    Total Investment Amount: ${investment_amount:,.2f}
+
+    Response:
     """
+
+    print("LLM Request:")
+    print(prompt)  # Print the prompt string
 
     try:
         response = st.session_state.gemini_chat.send_message(prompt)
@@ -137,6 +135,7 @@ if 'user_profile_data' not in st.session_state:
         'retirement_age': 64,
         'income': 50000,
         'savings': 10000,
+        'investment_amount': 10000,
         'risk_tolerance': 'Low'
     }
 
@@ -153,66 +152,70 @@ with tab1:
 
     # User profile input
     with st.expander("Build Your Profile"):
-        investment_goals = st.text_input("Enter your investment goals", value=st.session_state.user_profile_data['investment_goals'],
-                                         on_change=lambda: update_user_profile('investment_goals', investment_goals))
-        age = st.slider("Your Age", min_value=18, max_value=100, value=st.session_state.user_profile_data['age'],
-                        on_change=lambda: update_user_profile('age', age))
-        retirement_age = st.slider("Your Desired Retirement Age", min_value=18, max_value=100, value=st.session_state.user_profile_data['retirement_age'],
-                                   on_change=lambda: update_user_profile('retirement_age', retirement_age))
+        investment_goals = st.text_input("Enter your investment goals", value=st.session_state.user_profile_data['investment_goals'])
+        age = st.slider("Your Age", min_value=18, max_value=100, value=st.session_state.user_profile_data['age'])
+        retirement_age = st.slider("Your Desired Retirement Age", min_value=18, max_value=100, value=st.session_state.user_profile_data['retirement_age'])
+        investment_amount = st.number_input("Enter your desired investment amount", min_value=0, value=st.session_state.user_profile_data['investment_amount'], step=1000)
         time_horizon = retirement_age - age
         st.write(f"Investment Time Horizon: {time_horizon} years")
-        income = st.number_input("Enter your annual income", min_value=0, value=st.session_state.user_profile_data['income'], step=1000,
-                                 on_change=lambda: update_user_profile('income', income))
-        savings = st.number_input("Enter your total savings", min_value=0, value=st.session_state.user_profile_data['savings'], step=1000,
-                                  on_change=lambda: update_user_profile('savings', savings))
-        risk_tolerance = st.selectbox("Select your risk tolerance", ("Low", "Medium", "High"), index=["Low", "Medium", "High"].index(st.session_state.user_profile_data['risk_tolerance']),
-                                      on_change=lambda: update_user_profile('risk_tolerance', risk_tolerance))
+        income = st.number_input("Enter your annual income", min_value=0, value=st.session_state.user_profile_data['income'], step=1000)
+        savings = st.number_input("Enter your total savings", min_value=0, value=st.session_state.user_profile_data['savings'], step=1000)
+        risk_tolerance = st.selectbox("Select your risk tolerance", ("Low", "Medium", "High"), index=["Low", "Medium", "High"].index(st.session_state.user_profile_data['risk_tolerance']))
 
-    def update_user_profile(key, value):
-        st.session_state.user_profile_data[key] = value
-        st.session_state.user_profile.update_profile(
-            st.session_state.user_profile_data['age'],
-            st.session_state.user_profile_data['retirement_age'],
-            st.session_state.user_profile_data['retirement_age'] - st.session_state.user_profile_data['age'],
-            st.session_state.user_profile_data['income'],
-            st.session_state.user_profile_data['savings'],
-            st.session_state.user_profile_data['risk_tolerance'],
-            st.session_state.user_profile_data['investment_goals']
-        )
+        if st.button("Update Profile"):
+            st.session_state.user_profile_data = {
+                'investment_goals': investment_goals,
+                'age': age,
+                'retirement_age': retirement_age,
+                'income': income,
+                'savings': savings,
+                'investment_amount': investment_amount,
+                'risk_tolerance': risk_tolerance
+            }
+            st.session_state.user_profile.update_profile(
+                st.session_state.user_profile_data['age'],
+                st.session_state.user_profile_data['retirement_age'],
+                st.session_state.user_profile_data['retirement_age'] - st.session_state.user_profile_data['age'],
+                st.session_state.user_profile_data['income'],
+                st.session_state.user_profile_data['savings'],
+                st.session_state.user_profile_data['investment_amount'],
+                st.session_state.user_profile_data['risk_tolerance'],
+                st.session_state.user_profile_data['investment_goals']
+            )
 
     # Display messages from the chat history
     for message in st.session_state.messages:
         message_class = "user-message" if message['role'] == 'user' else "assistant-message"
         st.markdown(f'<div class="chat-message {message_class}">{message["content"]}</div>', unsafe_allow_html=True)
 
-# Input for the user's message
-user_input = st.text_input("Type your message here...", value=st.session_state.default_user_input, key="user_input")
+    # Input for the user's message
+    user_input = st.text_input("Type your message here...", value=st.session_state.default_user_input, key="user_input")
 
-if st.button("Submit", key="submit_button"):
-    if not st.session_state.is_loading:
-        st.session_state.is_loading = True
+    if st.button("Submit", key="submit_button"):
+        if not st.session_state.is_loading:
+            st.session_state.is_loading = True
 
-        # Append user message to chat history
-        st.session_state.messages.append({'role': 'user', 'content': user_input})
+            # Append user message to chat history
+            st.session_state.messages.append({'role': 'user', 'content': user_input})
 
-        # Initialize llm_response
-        llm_response = ""
+            # Initialize llm_response
+            llm_response = ""
 
-        # Get the user profile summary, system context, few-shot template, and total investment amount
-        user_profile_summary = st.session_state.user_profile.get_profile_summary()
-        system_context = get_system_context()
-        total_investment_amount = st.session_state.user_profile.savings
+            # Get the user profile summary, system context, few-shot template, and investment amount
+            user_profile_summary = st.session_state.user_profile.get_profile_summary()
+            system_context = get_system_context()
+            investment_amount = st.session_state.user_profile_data['investment_amount']
 
-        with st.spinner('Hanging tight! The LLM is currently navigating through the maze of market insights...'):
-            llm_response = suggest_portfolio(system_context, user_profile_summary, user_input, few_shot_template, total_investment_amount)
+            with st.spinner('Hanging tight! The LLM is currently navigating through the maze of market insights...'):
+                llm_response = suggest_portfolio(system_context, user_profile_summary, user_input, few_shot_template, investment_amount)
 
-        # Process the LLM response and update the chat history
-        st.session_state.messages.append({'role': 'assistant', 'content': llm_response})
+            # Process the LLM response and update the chat history
+            st.session_state.messages.append({'role': 'assistant', 'content': llm_response})
 
-        # Extract the selected stocks, ETFs, funds, and bonds from the LLM response
-        portfolio_items = extract_portfolio_items(llm_response)
+            # Extract the selected stocks, ETFs, funds, and bonds from the LLM response
+            portfolio_items = extract_portfolio_items(llm_response)
 
-        st.session_state.is_loading = False
+            st.session_state.is_loading = False
 
     # Display loading message while processing
     if st.session_state.is_loading:

@@ -8,7 +8,7 @@ class UserProfile:
         self.risk_tolerance = None
         self.investment_goals = None
 
-    def update_profile(self, age, retirement_age, time_horizon, income, savings, risk_tolerance, investment_goals):
+    def update_profile(self, age, retirement_age, time_horizon, income, savings, investment_amount, risk_tolerance, investment_goals):
         self.age = age
         self.retirement_age = retirement_age
         self.time_horizon = time_horizon
