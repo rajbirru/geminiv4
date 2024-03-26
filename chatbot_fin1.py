@@ -224,8 +224,8 @@ with tab1:
         
     # Display a random quote from a financial expert at the bottom of Tab1
     # st.markdown("### Wisdom from Financial Experts")
-    quote = show_random_finance_wisdom()
-    st.markdown(quote)    
+    # quote = show_random_finance_wisdom()
+    # st.markdown(quote)    
 
 with tab2:
     sentiment, sentiment_color, market_sentiment = get_market_sentiment(st.session_state.gemini_chat)
