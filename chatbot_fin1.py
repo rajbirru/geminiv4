@@ -11,7 +11,6 @@ from market_sentiment import get_market_sentiment
 from styles import get_styles  # Import the styles
 from learn import display_learn_tab
 from financial_wisdom import show_random_finance_wisdom
-from market_news import generate_financial_news_prompt
 import plotly.graph_objects as go
 
 
@@ -28,23 +27,10 @@ def display_portfolio_chart(portfolio_items):
     st.plotly_chart(fig)
 
 # Set page title and favicon
-st.set_page_config(page_title="FinanceGPT", page_icon=":money_with_wings:")
+# st.set_page_config(page_title="FinanceGPT", page_icon=":money_with_wings:")
 
 # Apply modern styling
 st.markdown(get_styles(), unsafe_allow_html=True)
-
-def display_market_news_tab(chat_instance):
-    st.markdown("### Market News")
-
-    try:
-        news_prompt = generate_financial_news_prompt()
-        news_response = chat_instance.send_message(news_prompt)
-        news_content = ''.join([chunk.text for chunk in news_response])
-    except Exception as e:
-        st.error(f"Error getting market news: {str(e)}")
-        news_content = "Error retrieving market news."
-
-    st.markdown(news_content)
 
 def suggest_portfolio(system_context, user_profile_summary, user_message, few_shot_template, investment_amount):
     prompt = f"""
@@ -128,7 +114,7 @@ if 'user_profile_data' not in st.session_state:
     }
 
 # Create tabs
-tab1, tab2, tab3, tab4 = st.tabs(["Advice", "Market Sentiment", "Learn", "News"])
+tab1, tab2, tab3 = st.tabs(["Advice", "Market Sentiment", "Learn"])
 
 with tab1:
     # Title and subtitle
@@ -224,8 +210,8 @@ with tab1:
         
     # Display a random quote from a financial expert at the bottom of Tab1
     # st.markdown("### Wisdom from Financial Experts")
-    quote = show_random_finance_wisdom()
-    st.markdown(quote)    
+    # quote = show_random_finance_wisdom()
+    # st.markdown(quote)    
 
 with tab2:
     sentiment, sentiment_color, market_sentiment = get_market_sentiment(st.session_state.gemini_chat)
@@ -238,9 +224,6 @@ with tab2:
 with tab3:
     display_learn_tab(st.session_state.gemini_chat, st.session_state.user_profile_data)
 
-with tab4:
-    # st.markdown("### Latest Market News")
-    display_market_news_tab(st.session_state.gemini_chat)
 
 def extract_portfolio_items(response):
     portfolio_items = {
@@ -284,4 +267,4 @@ def display_portfolio_chart(portfolio_items):
         fig.update_layout(title_text="Portfolio Allocation", title_x=0.5)
 
         # Display the chart in Streamlit
-        st.plotly_chart(fig) 
+        st.plotly_chart(fig)
