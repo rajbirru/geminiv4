@@ -242,46 +242,46 @@ with tab4:
     # st.markdown("### Latest Market News")
     # display_market_news_tab(st.session_state.gemini_chat)
 
-# def extract_portfolio_items(response):
-#     portfolio_items = {
-#         "Stocks": [],
-#         "ETFs": [],
-#         "Funds": [],
-#         "Bonds": []
-#     }
+def extract_portfolio_items(response):
+    portfolio_items = {
+        "Stocks": [],
+        "ETFs": [],
+        "Funds": [],
+        "Bonds": []
+    }
 
-#     # Use regular expressions to extract tickers/symbols from the response
-#     stock_regex = r"(\b[A-Z]+\b)"
-#     etf_regex = r"(\b[A-Z]+\b(?= ETF))"
-#     fund_regex = r"(\b[A-Z]+\b(?= Fund))"
-#     bond_regex = r"(\b[A-Z]+\b(?= Bond))"
+    # Use regular expressions to extract tickers/symbols from the response
+    stock_regex = r"(\b[A-Z]+\b)"
+    etf_regex = r"(\b[A-Z]+\b(?= ETF))"
+    fund_regex = r"(\b[A-Z]+\b(?= Fund))"
+    bond_regex = r"(\b[A-Z]+\b(?= Bond))"
 
-#     stocks = re.findall(stock_regex, response, re.IGNORECASE)
-#     etfs = re.findall(etf_regex, response, re.IGNORECASE)
-#     funds = re.findall(fund_regex, response, re.IGNORECASE)
-#     bonds = re.findall(bond_regex, response, re.IGNORECASE)
+    stocks = re.findall(stock_regex, response, re.IGNORECASE)
+    etfs = re.findall(etf_regex, response, re.IGNORECASE)
+    funds = re.findall(fund_regex, response, re.IGNORECASE)
+    bonds = re.findall(bond_regex, response, re.IGNORECASE)
 
-#     portfolio_items["Stocks"] = stocks
-#     portfolio_items["ETFs"] = etfs
-#     portfolio_items["Funds"] = funds
-#     portfolio_items["Bonds"] = bonds
+    portfolio_items["Stocks"] = stocks
+    portfolio_items["ETFs"] = etfs
+    portfolio_items["Funds"] = funds
+    portfolio_items["Bonds"] = bonds
 
-#     return portfolio_items
+    return portfolio_items
 
-# def display_portfolio_chart(portfolio_items):
-# # Display the portfolio allocation chart if portfolio items are extracted correctly
-#     if portfolio_items and all(portfolio_items.values()):
-#         # Prepare the data for the chart
-#         labels = list(portfolio_items.keys())
-#         values = [len(items) for items in portfolio_items.values()]
-#         total_items = sum(values)
+def display_portfolio_chart(portfolio_items):
+# Display the portfolio allocation chart if portfolio items are extracted correctly
+    if portfolio_items and all(portfolio_items.values()):
+        # Prepare the data for the chart
+        labels = list(portfolio_items.keys())
+        values = [len(items) for items in portfolio_items.values()]
+        total_items = sum(values)
 
-#         # Calculate the percentages for each asset class
-#         percentages = [round(value / total_items * 100, 2) for value in values]
+        # Calculate the percentages for each asset class
+        percentages = [round(value / total_items * 100, 2) for value in values]
 
-#         # Create a donut chart
-#         fig = go.Figure(data=[go.Pie(labels=labels, values=percentages, hole=0.5, textinfo='label+percent')])
-#         fig.update_layout(title_text="Portfolio Allocation", title_x=0.5)
+        # Create a donut chart
+        fig = go.Figure(data=[go.Pie(labels=labels, values=percentages, hole=0.5, textinfo='label+percent')])
+        fig.update_layout(title_text="Portfolio Allocation", title_x=0.5)
 
-#         # Display the chart in Streamlit
-#         st.plotly_chart(fig) 
+        # Display the chart in Streamlit
+        st.plotly_chart(fig) 
