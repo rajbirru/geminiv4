@@ -10,7 +10,6 @@ from few_shot_template import few_shot_template  # Import the few-shot template
 from market_sentiment import get_market_sentiment
 from styles import get_styles  # Import the styles
 from learn import display_learn_tab
-from financial_wisdom import show_random_finance_wisdom
 import plotly.graph_objects as go
 
 
@@ -81,6 +80,32 @@ def init_gemini_model():
         st.error(f"Error initializing Gemini LLM: {str(e)}")
         st.stop()
 
+def extract_portfolio_items(response):
+    portfolio_items = {
+        "Stocks": [],
+        "ETFs": [],
+        "Funds": [],
+        "Bonds": []
+    }
+
+    # Use regular expressions to extract tickers/symbols from the response
+    stock_regex = r"(\b[A-Z]+\b)"
+    etf_regex = r"(\b[A-Z]+\b(?= ETF))"
+    fund_regex = r"(\b[A-Z]+\b(?= Fund))"
+    bond_regex = r"(\b[A-Z]+\b(?= Bond))"
+
+    stocks = re.findall(stock_regex, response, re.IGNORECASE)
+    etfs = re.findall(etf_regex, response, re.IGNORECASE)
+    funds = re.findall(fund_regex, response, re.IGNORECASE)
+    bonds = re.findall(bond_regex, response, re.IGNORECASE)
+
+    portfolio_items["Stocks"] = stocks
+    portfolio_items["ETFs"] = etfs
+    portfolio_items["Funds"] = funds
+    portfolio_items["Bonds"] = bonds
+
+    return portfolio_items
+
 # Initialize the chat session
 if 'gemini_chat' not in st.session_state:
     st.session_state.gemini_chat = init_gemini_model()
@@ -105,9 +130,9 @@ if 'default_user_input' not in st.session_state:
 if 'user_profile_data' not in st.session_state:
     st.session_state.user_profile_data = {
         'investment_goals': 'Retirement',
-        'age': 39,
-        'retirement_age': 64,
-        'income': 50000,
+        'age': 35,
+        'retirement_age': 65,
+        'income': 150000,
         'savings': 10000,
         'investment_amount': 10000,
         'risk_tolerance': 'Low'
@@ -208,11 +233,6 @@ with tab1:
     # Display the portfolio allocation chart
     # display_portfolio_chart(portfolio_items)
         
-    # Display a random quote from a financial expert at the bottom of Tab1
-    # st.markdown("### Wisdom from Financial Experts")
-    # quote = show_random_finance_wisdom()
-    # st.markdown(quote)    
-
 with tab2:
     sentiment, sentiment_color, market_sentiment = get_market_sentiment(st.session_state.gemini_chat)
 
@@ -225,46 +245,22 @@ with tab3:
     display_learn_tab(st.session_state.gemini_chat, st.session_state.user_profile_data)
 
 
-def extract_portfolio_items(response):
-    portfolio_items = {
-        "Stocks": [],
-        "ETFs": [],
-        "Funds": [],
-        "Bonds": []
-    }
 
-    # Use regular expressions to extract tickers/symbols from the response
-    stock_regex = r"(\b[A-Z]+\b)"
-    etf_regex = r"(\b[A-Z]+\b(?= ETF))"
-    fund_regex = r"(\b[A-Z]+\b(?= Fund))"
-    bond_regex = r"(\b[A-Z]+\b(?= Bond))"
 
-    stocks = re.findall(stock_regex, response, re.IGNORECASE)
-    etfs = re.findall(etf_regex, response, re.IGNORECASE)
-    funds = re.findall(fund_regex, response, re.IGNORECASE)
-    bonds = re.findall(bond_regex, response, re.IGNORECASE)
+# def display_portfolio_chart(portfolio_items):
+# # Display the portfolio allocation chart if portfolio items are extracted correctly
+#     if portfolio_items and all(portfolio_items.values()):
+#         # Prepare the data for the chart
+#         labels = list(portfolio_items.keys())
+#         values = [len(items) for items in portfolio_items.values()]
+#         total_items = sum(values)
 
-    portfolio_items["Stocks"] = stocks
-    portfolio_items["ETFs"] = etfs
-    portfolio_items["Funds"] = funds
-    portfolio_items["Bonds"] = bonds
+#         # Calculate the percentages for each asset class
+#         percentages = [round(value / total_items * 100, 2) for value in values]
 
-    return portfolio_items
+#         # Create a donut chart
+#         fig = go.Figure(data=[go.Pie(labels=labels, values=percentages, hole=0.5, textinfo='label+percent')])
+#         fig.update_layout(title_text="Portfolio Allocation", title_x=0.5)
 
-def display_portfolio_chart(portfolio_items):
-# Display the portfolio allocation chart if portfolio items are extracted correctly
-    if portfolio_items and all(portfolio_items.values()):
-        # Prepare the data for the chart
-        labels = list(portfolio_items.keys())
-        values = [len(items) for items in portfolio_items.values()]
-        total_items = sum(values)
-
-        # Calculate the percentages for each asset class
-        percentages = [round(value / total_items * 100, 2) for value in values]
-
-        # Create a donut chart
-        fig = go.Figure(data=[go.Pie(labels=labels, values=percentages, hole=0.5, textinfo='label+percent')])
-        fig.update_layout(title_text="Portfolio Allocation", title_x=0.5)
-
-        # Display the chart in Streamlit
-        st.plotly_chart(fig)
+#         # Display the chart in Streamlit
+#         st.plotly_chart(fig)
