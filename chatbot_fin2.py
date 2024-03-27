@@ -75,6 +75,47 @@ def init_gemini_model():
         st.error(f"Error initializing Gemini LLM: {str(e)}")
         st.stop()
 
+def extract_portfolio_items(response):
+    portfolio_items = {
+        "Stocks": [],
+        "ETFs": [],
+        "Funds": [],
+        "Bonds": []
+    }
+
+    # Use regular expressions to extract tickers/symbols from the response
+    stock_regex = r"(\b[A-Z]+\b)"
+    etf_regex = r"(\b[A-Z]+\b(?= ETF))"
+    fund_regex = r"(\b[A-Z]+\b(?= Fund))"
+    bond_regex = r"(\b[A-Z]+\b(?= Bond))"
+
+    stocks = re.findall(stock_regex, response, re.IGNORECASE)
+    etfs = re.findall(etf_regex, response, re.IGNORECASE)
+    funds = re.findall(fund_regex, response, re.IGNORECASE)
+    bonds = re.findall(bond_regex, response, re.IGNORECASE)
+
+    portfolio_items["Stocks"] = stocks
+    portfolio_items["ETFs"] = etfs
+    portfolio_items["Funds"] = funds
+    portfolio_items["Bonds"] = bonds
+
+    return portfolio_items
+
+def display_portfolio_chart(portfolio_items):
+    # Prepare the data for the chart
+    categories = list(portfolio_items.keys())
+    counts = [len(items) for items in portfolio_items.values()]
+
+    # Create the chart
+    fig, ax = plt.subplots()
+    ax.bar(categories, counts)
+    ax.set_xlabel("Investment Category")
+    ax.set_ylabel("Count")
+    ax.set_title("Portfolio Composition")
+
+    # Display the chart in Streamlit
+    st.pyplot(fig)
+
 # Initialize the chat session
 if 'gemini_chat' not in st.session_state:
     st.session_state.gemini_chat = init_gemini_model()
@@ -104,10 +145,11 @@ with tab1:
         st.write(f"Investment Time Horizon: {time_horizon} years")
         income = st.number_input("Enter your annual income", min_value=0, value=50000, step=1000)
         savings = st.number_input("Enter your total savings", min_value=0, value=10000, step=1000)
+        investment_amount = st.number_input("How much do you like to invest", min_value=0, value=100000, step=1000)
         risk_tolerance = st.selectbox("Select your risk tolerance", ("Low", "Medium", "High"))
 
         if st.button("Save Profile"):
-            st.session_state.user_profile.update_profile(age, retirement_age, time_horizon, income, savings, risk_tolerance, investment_goals)
+            st.session_state.user_profile.update_profile(age, retirement_age, time_horizon, income, savings, investment_amount, risk_tolerance, investment_goals)
 
     # Display messages from the chat history
     for message in st.session_state.messages:
@@ -177,43 +219,3 @@ with tab3:
 
 
 
-def extract_portfolio_items(response):
-    portfolio_items = {
-        "Stocks": [],
-        "ETFs": [],
-        "Funds": [],
-        "Bonds": []
-    }
-
-    # Use regular expressions to extract tickers/symbols from the response
-    stock_regex = r"(\b[A-Z]+\b)"
-    etf_regex = r"(\b[A-Z]+\b(?= ETF))"
-    fund_regex = r"(\b[A-Z]+\b(?= Fund))"
-    bond_regex = r"(\b[A-Z]+\b(?= Bond))"
-
-    stocks = re.findall(stock_regex, response, re.IGNORECASE)
-    etfs = re.findall(etf_regex, response, re.IGNORECASE)
-    funds = re.findall(fund_regex, response, re.IGNORECASE)
-    bonds = re.findall(bond_regex, response, re.IGNORECASE)
-
-    portfolio_items["Stocks"] = stocks
-    portfolio_items["ETFs"] = etfs
-    portfolio_items["Funds"] = funds
-    portfolio_items["Bonds"] = bonds
-
-    return portfolio_items
-
-def display_portfolio_chart(portfolio_items):
-    # Prepare the data for the chart
-    categories = list(portfolio_items.keys())
-    counts = [len(items) for items in portfolio_items.values()]
-
-    # Create the chart
-    fig, ax = plt.subplots()
-    ax.bar(categories, counts)
-    ax.set_xlabel("Investment Category")
-    ax.set_ylabel("Count")
-    ax.set_title("Portfolio Composition")
-
-    # Display the chart in Streamlit
-    st.pyplot(fig)
